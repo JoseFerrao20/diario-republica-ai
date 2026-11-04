@@ -106,14 +106,14 @@ def parse_markdown(raw: str, hierarchy: dict[int, str] | None = None) -> list[Ar
     meta, body = split_front_matter(raw)
     diploma_id = str(meta.get("part_of") or meta.get("id") or "")
     title = _strip_part_suffix(str(meta.get("title", "")), meta.get("part"))
-    base = dict(
-        diploma_id=diploma_id,
-        dre_id=str(meta.get("dre_id", "")),
-        diploma_title=title,
-        url=str(meta.get("source", "")),
-        last_amended=str(meta.get("last_amended", "") or ""),
-        text_version=str(meta.get("text_version", "") or ""),
-    )
+    base = {
+        "diploma_id": diploma_id,
+        "dre_id": str(meta.get("dre_id", "")),
+        "diploma_title": title,
+        "url": str(meta.get("source", "")),
+        "last_amended": str(meta.get("last_amended", "") or ""),
+        "text_version": str(meta.get("text_version", "") or ""),
+    }
     if hierarchy is None:
         hierarchy = {}
     if str(meta.get("part") or "").lower().startswith("diploma de aprova"):

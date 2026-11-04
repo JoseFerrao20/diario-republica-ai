@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diário da República explicado</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #e3e0d8; --card: #ffffff;
+    --accent: #0b5d4b; --accent-soft: #e4f1ed; --warn: #8a5a00; --warn-soft: #fbf1dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --fg: #ecebe6; --muted: #a09e97; --line: #33322f; --card: #1f1f1d;
+            --accent: #5cc3a7; --accent-soft: #1c2f2a; --warn: #e3b55b; --warn-soft: #2e2617; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  form { display: flex; gap: 8px; }
+  textarea { flex: 1; resize: vertical; min-height: 56px; padding: 12px; font: inherit; color: var(--fg);
+             background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  button { padding: 0 18px; font: inherit; font-weight: 600; color: #fff; background: var(--accent);
+           border: 0; border-radius: 8px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .examples { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .examples button { background: var(--accent-soft); color: var(--accent); font-weight: 500;
+                     padding: 4px 10px; font-size: .85rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px;
+          margin-top: 20px; }
+  .answer p { margin: 0 0 10px; }
+  sup a { color: var(--accent); text-decoration: none; font-weight: 600; padding: 0 1px; }
+  .refused { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+  ol.cites { padding-left: 20px; margin: 0; }
+  ol.cites li { margin-bottom: 12px; }
+  .cite-head a { color: var(--fg); font-weight: 600; }
+  blockquote { margin: 4px 0 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted);
+               font-size: .92rem; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .metric .v { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .metric .l { color: var(--muted); font-size: .8rem; }
+  details { margin-top: 12px; color: var(--muted); font-size: .9rem; }
+  details li { margin-bottom: 2px; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .note { color: var(--muted); font-size: .82rem; margin-top: 28px; }
+  .err { color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Diário da República explicado</h1>
+  <p class="sub">Pergunta sobre legislação portuguesa. Cada resposta cita o artigo e liga ao Diário da República.</p>
+
+  <form id="f">
+    <textarea id="q" placeholder="Ex.: Quantos dias de férias tenho por ano?" required></textarea>
+    <button id="go">Perguntar</button>
+  </form>
+  <div class="examples" id="ex"></div>
+
+  <div id="out"></div>
+
+  <p class="note">Textos consolidados sem valor legal. Não substitui aconselhamento jurídico: confirma sempre na
+    ligação oficial do Diário da República.</p>
+</main>
+<script>
+const EXAMPLES = [
+  "Quantos dias de férias tenho por ano?",
+  "Com quanta antecedência tenho de avisar para me despedir?",
+  "Tenho quanto tempo para reclamar de um defeito num produto que comprei?",
+  "O que diz o artigo 13.º da Constituição?",
+];
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fmtMs = (ms) => ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : Math.round(ms) + " ms";
+const fmtUsd = (x) => "$" + (x ?? 0).toFixed(4);
+
+for (const e of EXAMPLES) {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = e;
+  b.onclick = () => { $("#q").value = e; ask(); };
+  $("#ex").appendChild(b);
+}
+$("#f").onsubmit = (ev) => { ev.preventDefault(); ask(); };
+
+async function ask() {
+  const q = $("#q").value.trim(); if (!q) return;
+  $("#go").disabled = true; $("#out").innerHTML = '<div class="card">A procurar nos diplomas…</div>';
+  try {
+    const r = await fetch("/api/ask", {method: "POST", headers: {"Content-Type": "application/json"},
+                                       body: JSON.stringify({question: q})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    render(d);
+  } catch (e) {
+    $("#out").innerHTML = `<div class="card err">Erro: ${esc(e.message)}</div>`;
+  } finally { $("#go").disabled = false; }
+}
+
+function render(d) {
+  let html = "";
+  if (d.refused) {
+    html += `<div class="card refused"><strong>Não encontrei fonte para responder.</strong><br>${esc(d.refusal_reason)}</div>`;
+  } else {
+    const body = d.segments.map((s) => esc(s.text) + s.citations.map((i) =>
+      `<sup><a href="#c${i + 1}" title="${esc(d.citations[i].diploma + ', ' + d.citations[i].article)}">[${i + 1}]</a></sup>`
+    ).join("")).join("");
+    html += `<div class="card answer">${body.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")}</div>`;
+    html += `<div class="card"><h2>Fontes</h2><ol class="cites">` + d.citations.map((c, i) =>
+      `<li id="c${i + 1}"><div class="cite-head"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.diploma)}, ${esc(c.article)}</a></div>
+       <blockquote>${esc(c.cited_text.trim())}</blockquote></li>`).join("") + `</ol></div>`;
+  }
+  const u = d.usage || {};
+  html += `<div class="card"><h2>Custo e latência desta resposta</h2><div class="metrics">
+    ${metric(fmtUsd(d.cost_usd), "custo (USD)")}
+    ${metric((u.input_tokens ?? 0).toLocaleString("pt-PT"), "tokens de entrada")}
+    ${metric((u.cache_read_tokens ?? 0).toLocaleString("pt-PT"), "tokens lidos da cache")}
+    ${metric((u.output_tokens ?? 0).toLocaleString("pt-PT"), "tokens de saída")}
+    ${metric(fmtMs(d.retrieval_ms), "pesquisa")}
+    ${metric(fmtMs(d.generation_ms), "geração")}
+  </div>`;
+  if (d.stats && d.stats.n) {
+    html += `<details><summary>Média das ${d.stats.n} respostas registadas: ${fmtUsd(d.stats.cost)}, ${fmtMs(d.stats.ms)}</summary></details>`;
+  }
+  html += `<details><summary>${d.retrieved.length} artigos enviados ao modelo${u.model ? " (" + esc(u.model) + ")" : ""}</summary><ul>` +
+    d.retrieved.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.diploma)}, art. ${esc(r.article)}</a> ${esc(r.epigrafe || "")}
+      <small>${Object.entries(r.ranks).map(([k, v]) => k + " #" + v).join(" · ")}</small></li>`).join("") + "</ul></details></div>";
+  $("#out").innerHTML = html;
+}
+const metric = (v, l) => `<div class="metric"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+</script>
+</body>
+</html>

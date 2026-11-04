@@ -1,0 +1,12 @@
+espelho:
+  repositorio: https://github.com/LawAgents/pt.git
+  commit: 83322cb57b88d18bf62be23ed939a9bc1c8edbab
+diplomas:
+  - id: lei-7-2009
+    nome: Código do Trabalho
+    siglas: [CT]
+    caminho: codigos/codigo-do-trabalho/
+  - id: lei-24-1996
+    nome: Lei de Defesa do Consumidor
+    siglas: [LDC, Lei 24/96]
+    caminho: leis/1996/lei-24-1996.md

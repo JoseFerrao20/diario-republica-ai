@@ -98,3 +98,34 @@ def has_vectors(conn: sqlite3.Connection) -> bool:
         conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'vec_chunks'").fetchone() is not None
         and get_meta(conn, "embedder") is not None
     )
+
+
+def log_run(conn: sqlite3.Connection, answer) -> int:
+    """Guarda tokens, custo e latência de uma resposta (dra.rag.Answer)."""
+    u = answer.usage
+    cur = conn.execute(
+        """INSERT INTO runs (question, refused, refusal_reason, model, input_tokens, output_tokens,
+               cache_read_tokens, cache_write_tokens, cost_usd, retrieval_ms, generation_ms, total_ms,
+               retrieved, cited, answer)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            answer.question, int(answer.refused), answer.refusal_reason, answer.model,
+            u.input_tokens if u else 0, u.output_tokens if u else 0,
+            u.cache_read_tokens if u else 0, u.cache_write_tokens if u else 0,
+            answer.cost_usd, answer.retrieval_ms, answer.generation_ms, answer.total_ms,
+            json.dumps([r["key"] for r in answer.retrieved]),
+            json.dumps(sorted({c.article_key for c in answer.citations})),
+            answer.text,
+        ),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def run_stats(conn: sqlite3.Connection) -> dict:
+    r = conn.execute(
+        """SELECT count(*) AS n, avg(cost_usd) AS cost, avg(total_ms) AS ms,
+                  avg(input_tokens) AS tin, avg(output_tokens) AS tout, sum(refused) AS refused
+           FROM runs"""
+    ).fetchone()
+    return dict(r)
