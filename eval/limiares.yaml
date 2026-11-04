@@ -1,8 +1,8 @@
 # Mínimos aceitáveis; o CI falha (--check) se alguma métrica descer abaixo.
 # Fixados a partir da primeira execução real com uma margem; atualizar quando o sistema melhorar.
 recuperacao:
-  bm25.recall@8: 0.65
-  hybrid.recall@8: 0.65
+  bm25.recall@8: 0.68
+  hybrid.recall@8: 0.75
 respostas:
   recusa_correta: 0.75
   taxa_resposta: 0.80

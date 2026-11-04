@@ -59,20 +59,20 @@ indexado, mas a tabela de limites de velocidade não foi extraída do DRE).
 
 ### Recuperação (sem LLM, corre em todos os pushes)
 
-_Os números com modelos de embeddings reais são produzidos pelo CI (`retrieval-eval`) e entram aqui depois da
-primeira execução._ Linha de base medida localmente (4.979 artigos, 51 perguntas com resposta):
+Medido no GitHub Actions sobre o índice completo (4.979 artigos), nas 51 perguntas com resposta. Recall@k = fração
+dos artigos esperados que aparecem nos k primeiros; MRR = média de 1/posição do primeiro artigo certo.
 
-| Modo | Recall@1 | Recall@5 | Recall@8 | MRR |
-| --- | --- | --- | --- | --- |
-| BM25 (FTS5) | 0,33 | 0,67 | 0,73 | 0,47 |
-| n-gramas com hashing (controlo, **não semântico**) | 0,31 | 0,57 | 0,61 | 0,41 |
-| Híbrido BM25 + hashing | 0,39 | 0,65 | 0,70 | 0,53 |
-| Denso — multilingual-MiniLM-L12 | CI | CI | CI | CI |
-| Denso — multilingual-e5-large | CI | CI | CI | CI |
-| Híbrido BM25 + e5-large | CI | CI | CI | CI |
+| Modo | Recall@1 | Recall@3 | Recall@5 | Recall@8 | MRR |
+| --- | --- | --- | --- | --- | --- |
+| BM25 (FTS5) | 0,33 | 0,59 | 0,69 | 0,73 | 0,47 |
+| Denso — paraphrase-multilingual-MiniLM-L12-v2 | 0,45 | 0,68 | 0,76 | 0,79 | 0,58 |
+| **Híbrido BM25 + MiniLM (RRF)** | **0,53** | **0,72** | **0,78** | **0,82** | **0,64** |
+| Denso — multilingual-e5-large | pendente (CI) | | | | |
+| Híbrido BM25 + e5-large (RRF) | pendente (CI) | | | | |
 
-O que falha no BM25 é vocabulário: "despedir-me" vs. "denúncia", "garantia" vs. "falta de conformidade",
-"morrer o meu pai" vs. "falecimento de parente no 1.º grau". É o caso para a pesquisa semântica.
+O híbrido supera os dois componentes: o BM25 falha no vocabulário ("despedir-me" vs. "denúncia", "garantia" vs.
+"falta de conformidade") e o denso falha em termos exatos e números; a fusão recupera o melhor de cada um. O modelo
+de resposta recebe os 8 primeiros artigos, por isso Recall@8 é o teto do que pode citar corretamente.
 
 ### Respostas (com LLM)
 
