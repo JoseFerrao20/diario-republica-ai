@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   UV_PYTHON: "3.12"
   FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.cache/fastembed
@@ -32,6 +36,7 @@ jobs:
     # Sem LLM, custo zero: corre em todos os pushes e PRs.
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +56,14 @@ jobs:
             data/mirror
             .cache/fastembed
           key: corpus-${{ hashFiles('config/corpus.yaml') }}-${{ steps.slug.outputs.slug }}
+      - name: Cache do índice (só se reconstrói quando o corpus ou o código de ingestão mudam)
+        id: index-cache
+        uses: actions/cache@v4
+        with:
+          path: data/dra.sqlite
+          key: index-${{ steps.slug.outputs.slug }}-${{ hashFiles('config/corpus.yaml', 'src/dra/parse.py', 'src/dra/index.py', 'src/dra/embed.py', 'src/dra/db.py', 'src/dra/sources/**') }}
       - name: Ingestão (espelho fixado + embeddings)
+        if: steps.index-cache.outputs.cache-hit != 'true'
         run: uv run dra --db data/dra.sqlite ingest --embedder "${{ matrix.embedder }}"
       - name: Avaliação da recuperação
         run: |
