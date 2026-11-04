@@ -57,6 +57,10 @@ jobs:
         run: |
           uv run dra --db data/dra.sqlite eval-retrieval --check --out "eval/resultados/recuperacao-${{ steps.slug.outputs.slug }}.json" | tee out.txt
           { echo "### Recuperação — ${{ matrix.embedder }}"; echo '```json'; cat out.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Métricas como anotação (legíveis pela API pública)
+        if: always()
+        run: |
+          python3 -c "import json,sys;d=json.load(open(sys.argv[1]))['summary'];print('::notice title=recuperacao ${{ steps.slug.outputs.slug }}::'+json.dumps(d))" "eval/resultados/recuperacao-${{ steps.slug.outputs.slug }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
