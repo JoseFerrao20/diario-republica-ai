@@ -93,7 +93,7 @@ No CI: a avaliação de recuperação corre em todos os PRs (sem custo); a avali
 | 4. Avaliação da recuperação no CI | feito |
 | 5. RAG — Citations API, recusa, tokens/custo/latência | feito; **não executado contra a API real** (sem chave no ambiente de desenvolvimento) |
 | 6. Interface — FastAPI + página | feito |
-| 7. Avaliação completa — juiz, limiares, resultados no README | código feito; à espera de uma execução com chave |
+| 7. Avaliação completa — juiz, limiares | código feito; não executada (sem orçamento para a API). Custo por pergunta estimado offline no README |
 
 ### Achados durante a implementação
 

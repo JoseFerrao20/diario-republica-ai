@@ -76,18 +76,35 @@ O que falha no BM25 é vocabulário: "despedir-me" vs. "denúncia", "garantia" v
 
 ### Respostas (com LLM)
 
-_Por medir: precisa de `ANTHROPIC_API_KEY` (ver "Avaliação" abaixo)._
+**Não medido.** A avaliação das respostas precisa de uma chave da API da Anthropic, que é paga, e este projeto foi
+construído sem gastos. O código está pronto e testado com um cliente simulado (`tests/test_rag.py`); quem tiver uma
+chave corre `uv run dra eval` e obtém as métricas abaixo. Não publico números que não medi.
 
-| Métrica | Como se mede | Valor |
+| Métrica | Como se mede |
+| --- | --- |
+| Recusa correta | % das 8 perguntas sem fonte que foram recusadas |
+| Taxa de resposta | % das 51 perguntas com fonte que foram respondidas |
+| Precisão das citações | artigos citados que estão entre os esperados |
+| Cobertura das citações | artigos esperados que foram citados |
+| Fidelidade | afirmações da resposta suportadas pelos artigos citados (juiz `claude-haiku-5-5`) |
+| Correção | correta / parcial / errada face à referência (juiz) |
+| Custo e latência | média e p95 por pergunta, a partir de `usage` de cada resposta |
+
+### Custo por pergunta (estimativa, não medição)
+
+Medido sem chamar a API: o contexto enviado ao modelo (prompt de sistema + 8 artigos + pergunta) tem em média
+**~16.900 caracteres** por pergunta do conjunto de teste (mediana 15.400; p95 34.000).
+
+| | Pressuposto | Opus 5.5 ($4 / $20 por M) |
 | --- | --- | --- |
-| Recusa correta | % das 8 perguntas sem fonte que foram recusadas | — |
-| Taxa de resposta | % das 51 perguntas com fonte que foram respondidas | — |
-| Precisão das citações | artigos citados que estão entre os esperados | — |
-| Cobertura das citações | artigos esperados que foram citados | — |
-| Fidelidade | afirmações da resposta suportadas pelos artigos citados (juiz `claude-haiku-5-5`) | — |
-| Correção | correta / parcial / errada face à referência (juiz) | — |
-| Custo médio por pergunta | tokens × tarifa (inclui pensamento e cache) | — |
-| Latência média / p95 | pesquisa + geração | — |
+| Entrada | 3–4 caracteres por token → ~4.200–5.600 tokens | ~$0,017–0,022 |
+| Saída | resposta curta + pensamento adaptativo (`effort: medium`): 300–1.500 tokens | ~$0,006–0,030 |
+| **Total** | | **~$0,02–0,05 por pergunta** |
+
+O prompt de sistema vai em cache, mas é pequeno; o grosso são os artigos, que mudam a cada pergunta. A avaliação
+completa (59 perguntas + juiz) custaria assim cerca de US$ 1,5–3. Trocar o modelo de resposta por
+`claude-haiku-5-5` (`DRA_ANSWER_MODEL`) baixa o custo cerca de 40 vezes, à custa de qualidade por medir.
+Na aplicação, o custo real de cada resposta é calculado a partir de `usage` e mostrado na página.
 
 ## Como correr localmente
 
@@ -127,7 +144,8 @@ uv run dra eval                   # completa: respostas + juiz (~59 chamadas ao 
 
 No GitHub Actions, a avaliação da recuperação corre em todos os pushes e PRs, com dois modelos de embeddings.
 A avaliação completa corre manualmente (_Actions → CI → Run workflow → full_eval_) ou num push para `main` cuja
-mensagem contenha `[eval]`, e só se o segredo `ANTHROPIC_API_KEY` estiver definido no repositório.
+mensagem contenha `[eval]`, e só se o segredo `ANTHROPIC_API_KEY` estiver definido no repositório; sem ele, o job
+termina sem fazer nada e sem custos.
 
 ## Estrutura
 
