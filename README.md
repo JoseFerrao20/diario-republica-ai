@@ -20,7 +20,7 @@ Claude que só responde com base no que recuperou, **citando o texto exato**.
 flowchart LR
     subgraph Ingestão
         A[LawAgents/pt<br/>espelho do DRE consolidado] --> P[Parser<br/>YAML + 1 chunk por artigo]
-        B[DRE screenservices<br/>adaptador direto] -.-> P
+        B[DRE screenservices<br/>adaptador direto — planeado] -.-> P
         P --> E[Embeddings<br/>multilingue]
         P --> DB[(SQLite<br/>FTS5 BM25 + sqlite-vec)]
         E --> DB
@@ -44,8 +44,9 @@ O DRE não tem API pública documentada. As três vias reais (verificadas, ver [
 
 - **[LawAgents/pt](https://github.com/LawAgents/pt)** — espelho em markdown de ~5.000 diplomas consolidados, extraídos do
   DRE, com `dre_id` e ligação oficial em cada ficheiro. É a fonte do índice.
-- **Serviços JSON internos do DRE** (`/dr/screenservices/...`, a aplicação OutSystems do site) — adaptador direto para
-  refrescar e verificar diplomas.
+- **Serviços JSON internos do DRE** (`/dr/screenservices/...`, a aplicação OutSystems do site) — a mesma via que o
+  espelho usa. Um adaptador direto está planeado mas **ainda não implementado**: o ambiente onde o projeto foi
+  construído não chega a `diariodarepublica.pt`, e não publico um cliente que não pude testar.
 - **RSS diário** (`files.diariodarepublica.pt/rss/serie1.xml`) — só o número do dia.
 
 ## Resultados da avaliação

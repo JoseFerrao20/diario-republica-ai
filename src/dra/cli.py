@@ -46,8 +46,9 @@ def cmd_search(a: argparse.Namespace) -> None:
 def cmd_ask(a: argparse.Namespace) -> None:
     from dra.app import answerer
 
-    ans = answerer(a.db).answer(a.question)
-    db.log_run(answerer(a.db).searcher.conn, ans)
+    eng = answerer(a.db)
+    ans = eng.answer(a.question)
+    db.log_run(eng.searcher.conn, ans)
     if ans.refused:
         print(f"Sem resposta: {ans.refusal_reason}")
     else:
