@@ -61,11 +61,18 @@ def files_for(spec: DiplomaSpec, root: Path) -> list[Path]:
     return sorted(p.rglob("*.md"))
 
 
+def is_republication(a: Article) -> bool:
+    """Anexos "Republicação …" são fotografias do texto de outro diploma à data da alteração (ex.: o NRAU
+    republica o capítulo da locação do Código Civil de 2006). O texto em vigor está no diploma consolidado;
+    indexá-los levaria a citar redações revogadas."""
+    return any(h.lower().startswith("anexo") and "republica" in h.lower() for h in a.hierarchy)
+
+
 def iter_articles(corpus: Corpus, root: Path) -> Iterator[tuple[DiplomaSpec, Article]]:
     for spec in corpus.diplomas:
         hierarchy: dict[int, str] = {}
         arts: list[Article] = []
         for f in files_for(spec, root):
-            arts += [a for a in parse_markdown(f.read_text(encoding="utf-8"), hierarchy) if a.diploma_id == spec.id]
+            arts += [a for a in parse_markdown(f.read_text(encoding="utf-8"), hierarchy) if a.diploma_id == spec.id and not is_republication(a)]
         for a in dedupe(arts):
             yield spec, a

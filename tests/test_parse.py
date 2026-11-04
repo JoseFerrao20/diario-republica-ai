@@ -77,3 +77,19 @@ def test_hierarchy_carries_across_parts_of_a_split_code(articles):
     assert a.paragraphs[0].startswith("1 - O período anual de férias tem a duração mínima de 22 dias úteis")
     # artigos 1.º do diploma de aprovação e 1.º do código anexo não colidem
     assert "lei-7-2009:diploma:art-1" in by_key and "lei-7-2009:anexo:art-1" in by_key
+
+
+def test_republication_annexes_are_excluded():
+    from dra.parse import parse_markdown
+    from dra.sources.mirror import is_republication
+
+    raw = """---
+id: "lei-6-2006"
+title: "Lei n.º 6/2006"
+---
+## Anexo — Republicação do capítulo IV do título II do livro II do Código Civil
+### Artigo 1100.º — Denúncia pelo arrendatário
+Texto antigo.
+"""
+    (a,) = parse_markdown(raw)
+    assert is_republication(a)

@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full_eval:
+        description: "Correr a avaliação completa com LLM (custa ~US$ 3; precisa do segredo ANTHROPIC_API_KEY)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  UV_PYTHON: "3.12"
+  FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.cache/fastembed
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --group dev
+      - run: uv run ruff check src tests
+      - run: uv run pytest -q
+
+  retrieval-eval:
+    # Sem LLM, custo zero: corre em todos os pushes e PRs.
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        embedder:
+          - fastembed:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+          - fastembed:intfloat/multilingual-e5-large
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra local-embeddings
+      - name: Slug do modelo
+        id: slug
+        run: echo "slug=$(echo '${{ matrix.embedder }}' | sed 's#.*/##')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            data/mirror
+            .cache/fastembed
+          key: corpus-${{ hashFiles('config/corpus.yaml') }}-${{ steps.slug.outputs.slug }}
+      - name: Ingestão (espelho fixado + embeddings)
+        run: uv run dra --db data/dra.sqlite ingest --embedder "${{ matrix.embedder }}"
+      - name: Avaliação da recuperação
+        run: |
+          uv run dra --db data/dra.sqlite eval-retrieval --check --out "eval/resultados/recuperacao-${{ steps.slug.outputs.slug }}.json" | tee out.txt
+          { echo "### Recuperação — ${{ matrix.embedder }}"; echo '```json'; cat out.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recuperacao-${{ steps.slug.outputs.slug }}
+          path: eval/resultados/
+      - uses: actions/upload-artifact@v4
+        if: steps.slug.outputs.slug == 'multilingual-e5-large'
+        with:
+          name: indice
+          path: data/dra.sqlite
+          retention-days: 3
+
+  full-eval:
+    # Com LLM: só manualmente (workflow_dispatch) ou em pushes para main que mexam no pipeline, e só se o segredo existir.
+    needs: retrieval-eval
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.full_eval ||
+      github.event_name == 'push' && contains(github.event.head_commit.message, '[eval]')
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      DRA_EMBEDDER: fastembed:intfloat/multilingual-e5-large
+    steps:
+      - name: Verificar segredo
+        id: key
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "Sem ANTHROPIC_API_KEY: avaliação completa ignorada." >> "$GITHUB_STEP_SUMMARY"; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+      - uses: astral-sh/setup-uv@v6
+        if: steps.key.outputs.ok == 'true'
+      - run: uv sync --extra local-embeddings
+        if: steps.key.outputs.ok == 'true'
+      - uses: actions/cache@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          path: .cache/fastembed
+          key: corpus-${{ hashFiles('config/corpus.yaml') }}-multilingual-e5-large
+      - uses: actions/download-artifact@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          name: indice
+          path: data
+      - name: Avaliação completa
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          uv run dra --db data/dra.sqlite eval --check | tee out.txt
+          { echo "### Avaliação completa"; echo '```'; tail -30 out.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.key.outputs.ok == 'true'
+        with:
+          name: avaliacao-completa
+          path: eval/resultados/

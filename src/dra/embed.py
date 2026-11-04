@@ -29,19 +29,27 @@ def _normalize(m: np.ndarray) -> np.ndarray:
     return (m / np.where(n == 0, 1, n)).astype(np.float32)
 
 
+# Prefixos que certos modelos exigem (o fastembed não os acrescenta: só os documenta).
+_PREFIXES = {
+    "intfloat/multilingual-e5": ("query: ", "passage: "),
+    "google/embeddinggemma": ("task: search result | query: ", "title: none | text: "),
+}
+
+
 class FastEmbedEmbedder:
     def __init__(self, model: str):
         from fastembed import TextEmbedding  # dependência opcional: pip install '.[local-embeddings]'
 
         self.name = f"fastembed:{model}"
         self._model = TextEmbedding(model_name=model)
-        self.dim = len(next(iter(self._model.query_embed(["teste"]))))
+        self._q, self._p = next((v for k, v in _PREFIXES.items() if model.startswith(k)), ("", ""))
+        self.dim = len(self.embed_query("teste"))
 
     def embed_passages(self, texts: list[str]) -> np.ndarray:
-        return _normalize(np.array(list(self._model.passage_embed(texts, batch_size=64))))
+        return _normalize(np.array(list(self._model.embed([self._p + t for t in texts], batch_size=64))))
 
     def embed_query(self, text: str) -> np.ndarray:
-        return _normalize(np.array(list(self._model.query_embed([text])))[0])
+        return _normalize(np.array(list(self._model.embed([self._q + text])))[0])
 
 
 class VoyageEmbedder:
