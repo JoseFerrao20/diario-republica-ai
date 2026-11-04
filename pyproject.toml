@@ -1,0 +1,38 @@
+[project]
+name = "diario-republica-ai"
+version = "0.1.0"
+description = "Perguntas sobre legislação portuguesa com citações do Diário da República (RAG com Claude)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "anthropic>=1.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pyyaml>=6.0",
+    "sqlite-vec>=0.1.6",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+local-embeddings = ["fastembed>=0.5"]
+voyage = ["voyageai>=0.3"]
+
+[project.scripts]
+dra = "dra.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dra"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110

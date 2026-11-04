@@ -1,0 +1,65 @@
+# Corpus indexado. Cada entrada aponta para um ficheiro ou pasta do espelho LawAgents/pt.
+# `nome` é o nome curto mostrado nas citações; `siglas` servem para detetar referências explícitas
+# ("artigo 238.º do CT"). A ligação oficial do DRE vem do cabeçalho de cada ficheiro.
+
+espelho:
+  repositorio: https://github.com/LawAgents/pt.git
+  commit: 83322cb57b88d18bf62be23ed939a9bc1c8edbab  # 2026-11-01
+
+diplomas:
+  - id: decreto-aprovacao-constituicao-1976-dre-502635
+    nome: Constituição da República Portuguesa
+    siglas: [CRP, Constituição]
+    caminho: constituicao/decreto-aprovacao-constituicao-1976-dre-502635/
+  - id: lei-7-2009
+    nome: Código do Trabalho
+    siglas: [CT]
+    caminho: codigos/codigo-do-trabalho/
+  - id: decreto-lei-47344-1966
+    nome: Código Civil
+    siglas: [CC]
+    caminho: codigos/codigo-civil/
+  - id: decreto-lei-4-2015
+    nome: Código do Procedimento Administrativo
+    siglas: [CPA]
+    caminho: codigos/codigo-do-procedimento-administrativo/
+  - id: lei-72-2013
+    nome: Código da Estrada
+    siglas: [CE]
+    caminho: codigos/codigo-da-estrada/
+  - id: lei-82-e-2014
+    nome: Código do IRS
+    siglas: [CIRS, IRS]
+    caminho: codigos/codigo-do-irs-imposto-sobre-o-rendimento-das-pessoas-singulares/
+  - id: decreto-lei-102-2008
+    nome: Código do IVA
+    siglas: [CIVA, IVA]
+    caminho: codigos/codigo-do-iva-codigo-do-imposto-sobre-o-valor-acrescentado/
+  - id: lei-6-2006
+    nome: Novo Regime do Arrendamento Urbano
+    siglas: [NRAU]
+    caminho: codigos/novo-regime-do-arrendamento-urbano/
+  - id: lei-35-2014
+    nome: Lei Geral do Trabalho em Funções Públicas
+    siglas: [LTFP, LGTFP]
+    caminho: leis/2014/lei-35-2014/
+  - id: lei-58-2019
+    nome: Lei de execução do RGPD
+    siglas: [Lei 58/2019]
+    caminho: leis/2019/lei-58-2019.md
+  - id: lei-24-1996
+    nome: Lei de Defesa do Consumidor
+    siglas: [LDC, Lei 24/96]
+    caminho: leis/1996/lei-24-1996.md
+  - id: decreto-lei-84-2021
+    nome: Regime da compra e venda de bens de consumo
+    siglas: [DL 84/2021]
+    caminho: decretos-lei/2021/decreto-lei-84-2021.md
+  - id: decreto-lei-446-1985
+    nome: Regime das Cláusulas Contratuais Gerais
+    siglas: [LCCG, DL 446/85]
+    caminho: decretos-lei/1985/decreto-lei-446-1985.md
+  - id: lei-37-1981
+    nome: Lei da Nacionalidade
+    siglas: [LN]
+    caminho: leis/1981/lei-37-1981.md
