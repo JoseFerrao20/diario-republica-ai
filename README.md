@@ -67,8 +67,11 @@ dos artigos esperados que aparecem nos k primeiros; MRR = média de 1/posição 
 | BM25 (FTS5) | 0,33 | 0,59 | 0,69 | 0,73 | 0,47 |
 | Denso — paraphrase-multilingual-MiniLM-L12-v2 | 0,45 | 0,68 | 0,76 | 0,79 | 0,58 |
 | **Híbrido BM25 + MiniLM (RRF)** | **0,53** | **0,72** | **0,78** | **0,82** | **0,64** |
-| Denso — multilingual-e5-large | pendente (CI) | | | | |
-| Híbrido BM25 + e5-large (RRF) | pendente (CI) | | | | |
+| Denso — potion-multilingual-128M (estático) | pendente (CI) | | | | |
+| Híbrido BM25 + potion (RRF) | pendente (CI) | | | | |
+
+O `intfloat/multilingual-e5-large` estava previsto, mas num runner gratuito do GitHub (2 vCPU) passou mais de uma
+hora só a gerar os embeddings dos 6.326 chunks sem terminar; ficou como opção para correr localmente.
 
 O híbrido supera os dois componentes: o BM25 falha no vocabulário ("despedir-me" vs. "denúncia", "garantia" vs.
 "falta de conformidade") e o denso falha em termos exatos e números; a fusão recupera o melhor de cada um. O modelo
@@ -115,9 +118,9 @@ git clone https://github.com/JoseFerrao20/diario-republica-ai && cd diario-repub
 uv sync --extra local-embeddings
 
 # 1. Ingestão: descarrega só os ~14 diplomas do corpus do espelho (commit fixado) e constrói o índice.
-#    O modelo de embeddings (~2 GB para o e5-large) é descarregado na primeira vez.
-uv run dra ingest --embedder fastembed:intfloat/multilingual-e5-large
-#    Mais leve: --embedder fastembed:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+#    O modelo de embeddings é descarregado na primeira vez.
+uv run dra ingest   # por omissão: paraphrase-multilingual-MiniLM-L12-v2 (o modelo medido no CI)
+#    Mais pesado (melhor GPU/CPU rápido): --embedder fastembed:intfloat/multilingual-e5-large
 #    Só BM25, sem descarregar modelos: --embedder none
 
 # 2. Pesquisa (sem LLM)

@@ -42,7 +42,9 @@ jobs:
       matrix:
         embedder:
           - fastembed:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-          - fastembed:intfloat/multilingual-e5-large
+          # embeddings estáticos (sem transformer na inferência): segundos em CPU
+          - fastembed:minishlab/potion-multilingual-128M
+          # O multilingual-e5-large ficou de fora: mais de 60 min só a gerar embeddings num runner gratuito.
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -79,7 +81,7 @@ jobs:
           name: recuperacao-${{ steps.slug.outputs.slug }}
           path: eval/resultados/
       - uses: actions/upload-artifact@v4
-        if: steps.slug.outputs.slug == 'multilingual-e5-large'
+        if: steps.slug.outputs.slug == 'paraphrase-multilingual-MiniLM-L12-v2'
         with:
           name: indice
           path: data/dra.sqlite
@@ -94,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      DRA_EMBEDDER: fastembed:intfloat/multilingual-e5-large
+      DRA_EMBEDDER: fastembed:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
     steps:
       - name: Verificar segredo
         id: key
@@ -110,7 +112,7 @@ jobs:
         if: steps.key.outputs.ok == 'true'
         with:
           path: .cache/fastembed
-          key: corpus-${{ hashFiles('config/corpus.yaml') }}-multilingual-e5-large
+          key: corpus-${{ hashFiles('config/corpus.yaml') }}-paraphrase-multilingual-MiniLM-L12-v2
       - uses: actions/download-artifact@v4
         if: steps.key.outputs.ok == 'true'
         with:
