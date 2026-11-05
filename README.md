@@ -7,6 +7,13 @@ Diário da República. Quando as fontes não respondem, a aplicação diz que n�
 > Projeto de portfólio. Os textos usados são consolidados e **não têm valor legal**; as respostas não
 > substituem aconselhamento jurídico. Confirma sempre na ligação oficial.
 
+![Interface: pergunta sobre aviso prévio, resposta com três citações do Código do Trabalho, painel de custo e latência](docs/img/interface.png)
+
+<sub>Captura da interface real a correr localmente. Os artigos recuperados, os textos citados e as ligações ao DRE
+vêm do índice; **o texto da resposta e os números de tokens, custo e latência são simulados**, porque o projeto não
+chamou a API paga (ver "Respostas"). As posições "dense" na lista de artigos vêm do embedder de teste (hashing), não
+do MiniLM.</sub>
+
 ## O problema
 
 A legislação portuguesa é pública, mas difícil de usar: um diploma é alterado dezenas de vezes, a versão em vigor está
