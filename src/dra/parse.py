@@ -34,6 +34,8 @@ _ARTICLE_RE = re.compile(
 _ARTICLE_UNICO_RE = re.compile(r"^(?P<hashes>#{2,6})\s+Artigo\s+único(?:\s*(?:—|-)\s*(?P<ep>.+))?\s*$", re.IGNORECASE)
 _HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<text>.+?)\s*$")
 _NOTE_RE = re.compile(r"^-\s+\*(?P<note>(?:Alterad|Aditad|Revogad|Retificad|Rectificad|Republicad)[^*]*)\*\s*$")
+# Artigo revogado no espelho: "*(Revogado)* — *Revogado pelo/a Artigo 54.º do/a Decreto-Lei n.º 84/2021 …*"
+_REVOKED_RE = re.compile(r"^\*\((?P<w>Revogad[oa])\)\*\s*(?:—\s*\*(?P<note>.+)\*)?\s*$")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 
 
@@ -175,6 +177,12 @@ def _paragraphs(lines: list[str]) -> tuple[list[str], list[str]]:
     notes: list[str] = []
     cur: list[str] = []
     for line in lines + [""]:
+        r = _REVOKED_RE.match(line.strip())
+        if r:
+            paragraphs.append(f"({r.group('w')})")
+            if r.group("note"):
+                notes.append(_LINK_RE.sub(r"\1", r.group("note")).strip())
+            continue
         n = _NOTE_RE.match(line.strip())
         if n:
             notes.append(_LINK_RE.sub(r"\1", n.group("note")).strip())

@@ -108,6 +108,39 @@ def cmd_eval(a: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_dre_sync(a: argparse.Namespace) -> None:
+    """Compara um diploma do índice com o texto consolidado atual no DRE; com --apply, substitui-o."""
+    from dra.embed import make_embedder
+    from dra.index import replace_diploma
+    from dra.sources.dre import DREClient, articles_from_consolidated
+
+    corpus = load_corpus()
+    spec = corpus.by_id(a.diploma)
+    if spec is None:
+        sys.exit(f"diploma desconhecido: {a.diploma} (ver config/corpus.yaml)")
+    conn = db.connect(a.db)
+    row = conn.execute("SELECT dre_id, diploma_title, url, last_amended FROM articles WHERE diploma_id = ? LIMIT 1",
+                       (spec.id,)).fetchone()
+    if row is None or not row["dre_id"]:
+        sys.exit(f"{spec.id} não está no índice ou não tem dre_id; corre primeiro `dra ingest`")
+    data = DREClient().consolidated(row["dre_id"])
+    new = articles_from_consolidated(data, diploma_id=spec.id, dre_id=row["dre_id"], diploma_title=row["diploma_title"], url=row["url"],
+                                     last_amended=str(data.get("DataUltimaConsolidada") or "")[:10])
+    old = {r["key"]: json.loads(r["paragraphs"]) for r in
+           conn.execute("SELECT key, paragraphs FROM articles WHERE diploma_id = ?", (spec.id,))}
+    newk = {x.key: x.paragraphs for x in new}
+    norm = lambda ps: [" ".join(p.split()) for p in ps]
+    added, removed = sorted(newk.keys() - old.keys()), sorted(old.keys() - newk.keys())
+    changed = sorted(k for k in newk.keys() & old.keys() if norm(newk[k]) != norm(old[k]))
+    print(f"{spec.name}: {len(newk)} artigos no DRE, {len(old)} no índice")
+    for label, ks in (("novos", added), ("removidos", removed), ("alterados", changed)):
+        print(f"  {label}: {len(ks)}" + (f" — {', '.join(k.split(':')[-1] for k in ks[:15])}" if ks else ""))
+    if a.apply and (added or removed or changed):
+        name = db.get_meta(conn, "embedder")
+        n = replace_diploma(conn, spec, new, make_embedder(name) if name else None)
+        print(f"índice atualizado: {n} artigos de {spec.name} substituídos pelo texto do DRE")
+
+
 def cmd_serve(a: argparse.Namespace) -> None:
     import os
 
@@ -150,6 +183,11 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("--min-similarity", type=float, default=None)
     s.add_argument("--check", action="store_true")
     s.set_defaults(func=cmd_eval)
+
+    s = sub.add_parser("dre-sync", help="compara um diploma com o DRE (e atualiza com --apply)")
+    s.add_argument("diploma", help="id do diploma em config/corpus.yaml, ex.: lei-24-1996")
+    s.add_argument("--apply", action="store_true")
+    s.set_defaults(func=cmd_dre_sync)
 
     s = sub.add_parser("serve", help="interface web")
     s.add_argument("--host", default="127.0.0.1")

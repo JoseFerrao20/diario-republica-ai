@@ -29,7 +29,7 @@ organização INCM — os resultados são avisos municipais e planos de ordename
 1. **Fonte principal para o índice: espelho LawAgents/pt** (fixado num commit concreto, para ser reprodutível).
    Já vem dividido por artigo, com metadados e ligação oficial. Cada citação aponta para a ligação do DRE
    (`source`), nunca para o espelho.
-2. **Adaptador direto ao DRE** (`screenservices`, ainda por fazer), para refrescar diplomas e verificar texto na fonte oficial quando
+2. **Adaptador direto ao DRE** (`screenservices`, `dra dre-sync`), para refrescar diplomas e verificar texto na fonte oficial quando
    se corre localmente. Fica atrás de uma interface `Source`, com limitação de ritmo, User-Agent identificado e paragem
    imediata em 429/503. Nota honesta: o ambiente onde este repositório foi criado não chega a `diariodarepublica.pt`
    (bloqueado pela política de rede), por isso este adaptador só pode ser validado fora dele.
@@ -88,7 +88,7 @@ No CI: a avaliação de recuperação corre em todos os PRs (sem custo); a avali
 | --- | --- |
 | 1. Fundações — README, plano | feito |
 | 2. Ingestão — leitor do espelho, divisão por artigo, esquema SQLite, `dra ingest` | feito |
-| 2b. Adaptador direto ao DRE (`screenservices`) | por fazer — precisa de um ambiente com acesso a `diariodarepublica.pt` |
+| 2b. Adaptador direto ao DRE (`screenservices`, `dra dre-sync`) | feito; conversão validada contra uma resposta real gravada; protocolo HTTP testado só contra simulador (DRE inacessível no ambiente de desenvolvimento) |
 | 3. Pesquisa — BM25, denso, RRF, referências explícitas | feito |
 | 4. Avaliação da recuperação no CI | feito |
 | 5. RAG — Citations API, recusa, tokens/custo/latência | feito; **não executado contra a API real** (sem chave no ambiente de desenvolvimento) |
@@ -102,6 +102,9 @@ No CI: a avaliação de recuperação corre em todos os PRs (sem custo); a avali
   hierarquia completa (e o Anexo IV do DL 102/2008, o CIVA, fica separado do Anexo V, o RITI).
 - O anexo da Lei 6/2006 (NRAU) é uma **republicação de 2006** do capítulo da locação do Código Civil: o n.º 2 do
   art. 1100.º já não coincide com o texto em vigor. Anexos de republicação são excluídos da ingestão.
+- Nos artigos revogados, a resposta do DRE mantém o texto anterior no campo `Texto`; só `VersaoEstadoId = 4` diz que
+  o artigo foi revogado. O espelho escreve-os como `*(Revogado)* — *nota*`; os dois adaptadores produzem agora o
+  mesmo: texto "(Revogado)" e a nota de revogação como metadado.
 - O art. 27.º do Código da Estrada (limites de velocidade) tem a tabela substituída por "(ver documento original)"
   no texto consolidado: o sistema tem de recusar em vez de responder de memória (pergunta `sem-fonte-07`).
 

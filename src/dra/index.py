@@ -38,6 +38,27 @@ def chunk_article(name: str, a: Article) -> list[str]:
     return chunks
 
 
+def _insert_article(conn: sqlite3.Connection, spec: DiplomaSpec, a: Article) -> int:
+    cur = conn.execute(
+        """INSERT INTO articles (key, diploma_id, diploma_name, diploma_title, dre_id, number, number_int,
+               scope, epigrafe, hierarchy, paragraphs, notes, url, last_amended, text_version)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            a.key, a.diploma_id, spec.name, a.diploma_title, a.dre_id, a.number, a.number_int, a.scope,
+            a.epigrafe, " > ".join(a.hierarchy), json.dumps(a.paragraphs, ensure_ascii=False),
+            json.dumps(a.notes, ensure_ascii=False), a.url, a.last_amended, a.text_version,
+        ),
+    )
+    aid = cur.lastrowid
+    conn.execute(
+        "INSERT INTO articles_fts (rowid, diploma_name, epigrafe, hierarchy, body) VALUES (?,?,?,?,?)",
+        (aid, " ".join([spec.name, *spec.acronyms]), a.epigrafe, " ".join(a.hierarchy), a.text),
+    )
+    for i, text in enumerate(chunk_article(spec.name, a)):
+        conn.execute("INSERT INTO chunks (article_id, ord, text) VALUES (?,?,?)", (aid, i, text))
+    return aid
+
+
 def store_articles(conn: sqlite3.Connection, items: Iterable[tuple[DiplomaSpec, Article]]) -> int:
     conn.execute("DELETE FROM chunks")
     conn.execute("DELETE FROM articles_fts")
@@ -45,26 +66,37 @@ def store_articles(conn: sqlite3.Connection, items: Iterable[tuple[DiplomaSpec, 
     conn.execute("DROP TABLE IF EXISTS vec_chunks")
     n = 0
     for spec, a in items:
-        cur = conn.execute(
-            """INSERT INTO articles (key, diploma_id, diploma_name, diploma_title, dre_id, number, number_int,
-                   scope, epigrafe, hierarchy, paragraphs, notes, url, last_amended, text_version)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                a.key, a.diploma_id, spec.name, a.diploma_title, a.dre_id, a.number, a.number_int, a.scope,
-                a.epigrafe, " > ".join(a.hierarchy), json.dumps(a.paragraphs, ensure_ascii=False),
-                json.dumps(a.notes, ensure_ascii=False), a.url, a.last_amended, a.text_version,
-            ),
-        )
-        aid = cur.lastrowid
-        conn.execute(
-            "INSERT INTO articles_fts (rowid, diploma_name, epigrafe, hierarchy, body) VALUES (?,?,?,?,?)",
-            (aid, " ".join([spec.name, *spec.acronyms]), a.epigrafe, " ".join(a.hierarchy), a.text),
-        )
-        for i, text in enumerate(chunk_article(spec.name, a)):
-            conn.execute("INSERT INTO chunks (article_id, ord, text) VALUES (?,?,?)", (aid, i, text))
+        _insert_article(conn, spec, a)
         n += 1
     conn.commit()
     return n
+
+
+def replace_diploma(conn: sqlite3.Connection, spec: DiplomaSpec, articles: list[Article],
+                    embedder: Embedder | None) -> int:
+    """Substitui os artigos de um diploma (texto, FTS, chunks e vetores) sem reconstruir o resto do índice."""
+    has_vec = conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'vec_chunks'").fetchone() is not None
+    if has_vec and embedder is None:
+        raise ValueError("o índice tem vetores: é preciso o mesmo embedder para os novos chunks")
+    old = [r[0] for r in conn.execute("SELECT id FROM articles WHERE diploma_id = ?", (spec.id,))]
+    marks = ",".join("?" * len(old))
+    if old:
+        if has_vec:
+            conn.execute(f"DELETE FROM vec_chunks WHERE rowid IN (SELECT id FROM chunks WHERE article_id IN ({marks}))",
+                         old)
+        conn.execute(f"DELETE FROM chunks WHERE article_id IN ({marks})", old)
+        conn.execute(f"DELETE FROM articles_fts WHERE rowid IN ({marks})", old)
+        conn.execute(f"DELETE FROM articles WHERE id IN ({marks})", old)
+    new_ids = [_insert_article(conn, spec, a) for a in articles]
+    if has_vec and new_ids:
+        rows = conn.execute(
+            f"SELECT id, text FROM chunks WHERE article_id IN ({','.join('?' * len(new_ids))}) ORDER BY id", new_ids
+        ).fetchall()
+        vecs = embedder.embed_passages([r["text"] for r in rows])
+        conn.executemany("INSERT INTO vec_chunks (rowid, embedding) VALUES (?, ?)",
+                         [(r["id"], v.astype("float32").tobytes()) for r, v in zip(rows, vecs, strict=True)])
+    conn.commit()
+    return len(new_ids)
 
 
 def embed_chunks(conn: sqlite3.Connection, embedder: Embedder, batch: int = 256, log=print) -> int:

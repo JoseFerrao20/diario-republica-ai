@@ -27,7 +27,7 @@ Claude que só responde com base no que recuperou, **citando o texto exato**.
 flowchart LR
     subgraph Ingestão
         A[LawAgents/pt<br/>espelho do DRE consolidado] --> P[Parser<br/>YAML + 1 chunk por artigo]
-        B[DRE screenservices<br/>adaptador direto — planeado] -.-> P
+        B[DRE screenservices<br/>adaptador direto: dre-sync] -.-> P
         P --> E[Embeddings<br/>multilingue]
         P --> DB[(SQLite<br/>FTS5 BM25 + sqlite-vec)]
         E --> DB
@@ -52,9 +52,22 @@ O DRE não tem API pública documentada. As três vias reais (verificadas, ver [
 - **[LawAgents/pt](https://github.com/LawAgents/pt)** — espelho em markdown de ~5.000 diplomas consolidados, extraídos do
   DRE, com `dre_id` e ligação oficial em cada ficheiro. É a fonte do índice.
 - **Serviços JSON internos do DRE** (`/dr/screenservices/...`, a aplicação OutSystems do site) — a mesma via que o
-  espelho usa. Um adaptador direto está planeado mas **ainda não implementado**: o ambiente onde o projeto foi
-  construído não chega a `diariodarepublica.pt`, e não publico um cliente que não pude testar.
+  espelho usa. O adaptador direto (`src/dra/sources/dre.py`, comando `dra dre-sync`) compara um diploma do índice com
+  o texto consolidado atual no DRE e, com `--apply`, substitui-o (texto, BM25 e vetores).
 - **RSS diário** (`files.diariodarepublica.pt/rss/serie1.xml`) — só o número do dia.
+
+### Como o adaptador direto foi validado
+
+- **Conversão — validada contra dados reais.** A resposta real do DRE para a Lei 24/96 (gravada pelo LawAgents/pt,
+  em `tests/fixtures/dre/`) dá os mesmos 29 artigos que o espelho, com o mesmo texto, epígrafes e hierarquia.
+  Esta comparação apanhou um erro que de outra forma passaria: nos artigos **revogados**, o DRE mantém o texto
+  antigo no campo `Texto` — os arts. 9.º-B, 9.º-C e 9.º-D da Lei 24/96, revogados em 2022, seriam citados como em
+  vigor. O estado do fragmento (`VersaoEstadoId`) é agora o que decide.
+- **Protocolo HTTP — testado contra um simulador, não contra o DRE.** O ambiente onde o projeto foi construído não
+  chega a `diariodarepublica.pt`. O cliente segue o protocolo do cliente do LawAgents/pt, que o usa semanalmente
+  (versão do módulo, `apiVersion` lido do JavaScript do ecrã, token CSRF anónimo), e os testes cobrem ritmo de pedidos
+  (≤ 2/s), User-Agent, renovação de tokens após um redeploy, paragem em 429/503 e após 3 erros seguidos, e falha
+  explícita (`ServiceChanged`) se o formato mudar. A primeira execução real deve ser vigiada.
 
 ## Resultados da avaliação
 
@@ -140,6 +153,9 @@ uv run dra ask "Com quanta antecedência tenho de avisar para me despedir?"
 
 # 4. Interface web em http://127.0.0.1:8000
 uv run dra serve
+
+# 5. Comparar um diploma com o texto atual no DRE (e atualizar o índice com --apply)
+uv run dra dre-sync lei-24-1996
 ```
 
 Variáveis úteis: `DRA_ANSWER_MODEL` (por omissão `claude-opus-5-5`), `DRA_ANSWER_EFFORT` (`medium`),
@@ -148,7 +164,7 @@ Variáveis úteis: `DRA_ANSWER_MODEL` (por omissão `claude-opus-5-5`), `DRA_ANS
 ### Avaliação
 
 ```bash
-uv run pytest                     # 22 testes, sem rede nem chave
+uv run pytest                     # 37 testes, sem rede nem chave
 uv run dra eval-retrieval         # Recall@k e MRR por modo; --check falha abaixo de eval/limiares.yaml
 uv run dra eval                   # completa: respostas + juiz (~59 chamadas ao Opus 5.5 + ~100 ao Haiku 5.5)
 ```
@@ -164,6 +180,7 @@ termina sem fazer nada e sem custos.
 config/corpus.yaml        diplomas indexados e commit fixado do espelho
 src/dra/parse.py          markdown do espelho → artigos (hierarquia, anexos, notas de alteração)
 src/dra/sources/mirror.py descarga (sparse checkout) e ordem das partes dos códigos
+src/dra/sources/dre.py    adaptador direto ao DRE (screenservices) e conversão em artigos
 src/dra/index.py          SQLite: artigos, FTS5, chunks, vetores
 src/dra/search.py         BM25, kNN, RRF, referências explícitas
 src/dra/rag.py            Claude + Citations API, recusa
