@@ -86,15 +86,15 @@ dos artigos esperados que aparecem nos k primeiros; MRR = média de 1/posição 
 | --- | --- | --- | --- | --- | --- |
 | BM25 (FTS5) | 0,33 | 0,59 | 0,69 | 0,73 | 0,47 |
 | Denso — paraphrase-multilingual-MiniLM-L12-v2 | 0,45 | 0,68 | 0,76 | 0,79 | 0,58 |
-| **Híbrido BM25 + MiniLM (RRF)** | **0,53** | **0,72** | **0,78** | **0,82** | **0,64** |
-| Denso — potion-multilingual-128M (estático) | 0,31 | 0,51 | 0,61 | 0,65 | 0,43 |
-| Híbrido BM25 + potion (RRF) | 0,43 | 0,65 | 0,72 | 0,78 | 0,55 |
+| **Híbrido BM25 + MiniLM (RRF)** | **0,53** | **0,72** | **0,78** | **0,82** | **0,63** |
+| Denso — potion-multilingual-128M (estático) | 0,31 | 0,51 | 0,59 | 0,65 | 0,43 |
+| Híbrido BM25 + potion (RRF) | 0,43 | 0,65 | 0,72 | 0,77 | 0,54 |
 
 O `intfloat/multilingual-e5-large` estava previsto, mas num runner gratuito do GitHub (2 vCPU) passou mais de uma
 hora só a gerar os embeddings dos 6.326 chunks sem terminar; ficou como opção para correr localmente.
 
 Com os dois modelos, o híbrido supera os dois componentes. Mesmo o potion, que sozinho fica abaixo do BM25, acrescenta
-ao BM25 (Recall@8 0,73 → 0,78). O MiniLM é o modelo por omissão. Explicação: o BM25 falha no vocabulário ("despedir-me" vs. "denúncia", "garantia" vs.
+ao BM25 (Recall@8 0,73 → 0,77). O MiniLM é o modelo por omissão. Explicação: o BM25 falha no vocabulário ("despedir-me" vs. "denúncia", "garantia" vs.
 "falta de conformidade") e o denso falha em termos exatos e números; a fusão recupera o melhor de cada um. O modelo
 de resposta recebe os 8 primeiros artigos, por isso Recall@8 é o teto do que pode citar corretamente.
 
